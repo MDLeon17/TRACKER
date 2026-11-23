@@ -1,0 +1,9 @@
+/datos/*
+!/datos/.gitkeep
+/.env
+/tunnel-token.txt
+/web/node_modules/
+/web/dist/
+/server/data/
+/relevo-linux-amd64.tar
+

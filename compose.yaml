@@ -1,0 +1,52 @@
+name: relevo-tracker
+services:
+  app:
+    image: relevo-tracker:1.0
+    build: .
+    restart: unless-stopped
+    user: "${RELEVO_UID:-1000}:${RELEVO_GID:-1000}"
+    ports:
+      - "127.0.0.1:${APP_PORT:-8741}:8080"
+    volumes:
+      - type: bind
+        source: ./datos
+        target: /data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      interval: 20s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+      start_interval: 2s
+
+  enlace:
+    image: cloudflare/cloudflared@sha256:55c7e3e8d89d5e8d20b75a82f3602cbf98e06db406e73e282073cfdc5a9a3af6
+    profiles: [publico]
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://app:8080"]
+    depends_on:
+      app: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  dominio:
+    image: cloudflare/cloudflared@sha256:55c7e3e8d89d5e8d20b75a82f3602cbf98e06db406e73e282073cfdc5a9a3af6
+    profiles: [estable]
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "run", "--token-file", "/run/secrets/tunnel_token"]
+    secrets: [tunnel_token]
+    depends_on:
+      app: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+secrets:
+  tunnel_token:
+    file: ${RELEVO_TOKEN_FILE:-./tunnel-token.txt}
+
